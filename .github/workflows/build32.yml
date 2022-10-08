@@ -1,4 +1,4 @@
-name: build64
+name: build32
 
 on: workflow_dispatch
 
