@@ -18,7 +18,7 @@ jobs:
       run: |
         Invoke-WebRequest https://www.dropbox.com/s/gbf8sdx8wqxcrnd/jom.zip?dl=1 -OutFile .\jom.zip
         expand-archive -path "jom.zip"
-        echo "D:\a\qt-5-static-build\qt-5-static-build\jom" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+        echo "D:\a\static-build-qt5\static-build-qt5\jom" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
     - name: Compile static Qt version
       run: |
         # Clone Qt5 repo
