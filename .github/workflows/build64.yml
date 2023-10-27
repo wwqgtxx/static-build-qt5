@@ -1,6 +1,6 @@
 name: build64
 
-on: push
+on: push 
 
 jobs:
   GenerateWinStaticBinaries:
