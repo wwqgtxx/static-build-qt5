@@ -1,47 +1,58 @@
 name: build64
 
-on: workflow_dispatch
+on: push 
 
 jobs:
   GenerateWinStaticBinaries:
-    runs-on: windows-2019
+    runs-on: windows-2022
+
+    strategy:
+      fail-fast: false
+      matrix:
+        qt_version: ["5.15.2"]
 
     steps:
     - name: Clone repository
-      uses: actions/checkout@v2
+      uses: actions/checkout@v3
     - name: Install Python 3.7 version
-      uses: actions/setup-python@v1
+      uses: actions/setup-python@v4
       with:
         python-version: '3.7'
         architecture: 'x64'
     - name: Install jom
       run: |
-        Invoke-WebRequest https://www.dropbox.com/s/gbf8sdx8wqxcrnd/jom.zip?dl=1 -OutFile .\jom.zip
+        Invoke-WebRequest http://download.qt.io/official_releases/jom/jom.zip -OutFile .\jom.zip
         expand-archive -path "jom.zip"
-        echo "D:\a\static-build-qt5\static-build-qt5\jom" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+        echo "${{ github.workspace }}\jom" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
     - name: Compile static Qt version
       run: |
         # Clone Qt5 repo
         cd ..
-        git clone https://code.qt.io/qt/qt5.git -b 5.15.2
+        git clone https://code.qt.io/qt/qt5.git -b ${{ matrix.qt_version }}
         cd qt5
-        perl init-repository -f --module-subset=qthelper,qt3d,qtbase,qtcanvas3d,qtcharts,qtdeclarative,qtgraphicaleffects,qtimageformats,qtmultimedia,qtnetworkauth,qtquick3d,qtquickcontrols,qtquickcontrols2,qtserialbus,qtserialport,qtsvg,qtwebchannel,qtwebengine,qtwebsockets,qtwebview,qtwinextras,qtxmlpatterns
+        perl init-repository -f --module-subset=qtbase,qtsvg,qttools,qtwinextras
         # Create shadow build folder
         cd ..
         mkdir qt5_shadow
         cd qt5_shadow
         # Setup the compiler
-        cmd.exe /c "call `"C:\Program Files (x86)\Microsoft Visual Studio\2019\Enterprise\VC\Auxiliary\Build\vcvars64.bat`" && set > %temp%\vcvars.txt"
+        cmd.exe /c "call `"C:\Program Files\Microsoft Visual Studio\2022\Enterprise\VC\Auxiliary\Build\vcvars64.bat`" && set > %temp%\vcvars.txt"
         Get-Content "$env:temp\vcvars.txt" | Foreach-Object { if ($_ -match "^(.*?)=(.*)$") { Set-Content "env:\$($matches[1])" $matches[2] } }
         # Configure Qt5
-        ..\qt5\configure.bat -release -static -static-runtime -prefix "..\Qt5_binaries" -no-pch -optimize-size -opengl desktop -skip webengine -nomake tools -nomake tests -nomake examples -opensource -confirm-license
+        ..\qt5\configure.bat -release -static -static-runtime -no-sql-db2 -no-sql-ibase -no-sql-mysql -no-sql-oci -no-sql-odbc -no-sql-psql -schannel -prefix "..\Qt5_binaries" -no-pch -optimize-size -opengl desktop -skip webengine -nomake tools -nomake tests -nomake examples -opensource -confirm-license
         jom -j4
         nmake install
     - name: Package binaries
       run: |
         # Create archive of the pre-built Qt binaries
-        7z a qt5_5152_static_64.zip ..\Qt5_binaries
-    - uses: actions/upload-artifact@v1
+        7z a qt5_${{ matrix.qt_version }}_static_64.7z ..\Qt5_binaries
+    - uses: actions/upload-artifact@v3
       with:
-        name: qt5_5152_static_64.zip
-        path: qt5_5152_static_64.zip
+        name: qt5_${{ matrix.qt_version }}_static_64.7z
+        path: qt5_${{ matrix.qt_version }}_static_64.7z
+    - name: Upload Release
+      uses: softprops/action-gh-release@v1
+      if: ${{  success() }}
+      with:
+        tag_name: qt5_static_64
+        files: qt5_${{ matrix.qt_version }}_static_64.7z
