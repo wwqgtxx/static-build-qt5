@@ -9,7 +9,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        qt_version: ["5.15.2"]
+        qt_version: ["5.15.2", "5.15.3", "5.15.4", "5.15.5", "5.15.6", "5.15.7", "5.15.8", "5.15.9", "5.15.10", "5.15.11", "5.15.12", "5.15.13", "5.15.14", "5.15.15"]
 
     steps:
     - name: Clone repository
@@ -24,12 +24,19 @@ jobs:
         Invoke-WebRequest http://download.qt.io/official_releases/jom/jom.zip -OutFile .\jom.zip
         expand-archive -path "jom.zip"
         echo "${{ github.workspace }}\jom" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+    - name: Clone Qt5 repo
+      if: ${{ matrix.qt_version == '5.15.2' }}
+      run: |
+        cd ..
+        git clone https://code.qt.io/qt/qt5.git -b v${{ matrix.qt_version }}
+    - name: Clone Qt5 repo
+      if: ${{ matrix.qt_version != '5.15.2' }}
+      run: |
+        cd ..
+        git clone https://code.qt.io/qt/qt5.git -b v${{ matrix.qt_version }}-lts-lgpl
     - name: Compile static Qt version
       run: |
-        # Clone Qt5 repo
-        cd ..
-        git clone https://code.qt.io/qt/qt5.git -b ${{ matrix.qt_version }}
-        cd qt5
+        cd ../qt5
         perl init-repository -f --module-subset=qtbase,qtsvg,qttools,qtwinextras
         # Create shadow build folder
         cd ..
